@@ -35,7 +35,6 @@ def build_high_low_containers(data):
     for ep_idx, episode in enumerate(episodes):
         conversations = episode.get("conversations", [])
 
-        # --- 1️⃣ Task description 추출 ---
         task_description = ""
         for c in conversations:
             val = c.get("value", "")
@@ -43,7 +42,6 @@ def build_high_low_containers(data):
                 task_description = val.split("Your task is to:")[1].split("Task Knowledge")[0].strip()
                 break
 
-        # --- 2️⃣ 초기 Observation 추출 ---
         initial_obs = None
         for c in conversations:
             val = c.get("value", "")
@@ -58,7 +56,6 @@ def build_high_low_containers(data):
         if initial_obs:
             obs_list.append(initial_obs)
 
-        # --- 3️⃣ Observation & Action 추출 ---
         for c in conversations:
             msg = c.get("value", "")
 
@@ -71,13 +68,11 @@ def build_high_low_containers(data):
             if "Action:" in msg:
                 act = msg.split("Action:")[-1].strip()
 
-                # ⚠️ "<your next action>" 같은 placeholder 제거
                 if "<" in act and ">" in act:
                     continue
 
                 actions_list.append(act)
 
-                # subtask 이름 생성
                 subtask_name = " ".join(act.split()[:3]).strip()
                 if not subtask_name or "your" in subtask_name.lower():
                     continue
@@ -85,15 +80,13 @@ def build_high_low_containers(data):
 
         groups = len(subtasks)
 
-        # --- High-level ---
         high_data_container['task_description'].append(task_description)
         high_data_container['obs'].append(obs_list)
         high_data_container['subtask'].append(subtasks)
-        high_data_container['reward'].append([0.0] * (groups - 1) + [1.0])  # ✅ 수정
+        high_data_container['reward'].append([0.0] * (groups - 1) + [1.0])  
         high_data_container['score'].append([0.0] * (groups - 1) + [1.0])
         high_data_container['done'].append([False] * (groups - 1) + [True])
 
-        # --- Low-level ---
         for i, subtask in enumerate(subtasks):
             sub_obs = []
             sub_actions = []
@@ -115,7 +108,7 @@ def build_high_low_containers(data):
             low_data_container['subtask'].append(low_prompt)
             low_data_container['obs'].append(sub_obs)
             low_data_container['action'].append(sub_actions)
-            low_data_container['reward'].append([0.0] * (steps - 1) + [1.0])  # ✅ 수정
+            low_data_container['reward'].append([0.0] * (steps - 1) + [1.0]) 
             low_data_container['score'].append([0.0] * (steps - 1) + [1.0])
             low_data_container['done'].append([False] * (steps - 1) + [True])
 
@@ -146,7 +139,7 @@ def main():
     print("[OK] Saved:")
     print(f" - {hi_out}")
     print(f" - {lo_out}")
-    print("\n✅ High-level summary:")
+    print("\n High-level summary:")
     print(json.dumps(high_c, indent=2, ensure_ascii=False))
 
 
