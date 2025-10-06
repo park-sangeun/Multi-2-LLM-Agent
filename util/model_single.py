@@ -18,8 +18,8 @@ class Policy(nn.Module):
 
         torch_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
         self.base = AutoModelForCausalLM.from_pretrained(args["model_name"], torch_dtype=torch_dtype)
-        # self.base.gradient_checkpointing_enable()
-        self.base.config.use_cache = False   # 반드시 추가
+       
+        self.base.config.use_cache = False  
         self.base.gradient_checkpointing_enable()
 
 
@@ -34,15 +34,15 @@ class Policy(nn.Module):
                 lora_dropout=0.05
             )
             self.base = get_peft_model(self.base, lora_config)
-        # self.hidden_dim = self.base.config.hidden_size
+      
 
     def generate_action(self, state_ids):
-        state_ids = state_ids.to(self.base.device)  # (batch, sqe_len)
+        state_ids = state_ids.to(self.base.device) 
         context_len = state_ids['input_ids'].size(1)
         outputs = self.base.generate(**state_ids, 
                                      max_new_tokens=self.args["max_new_tokens"],
-                                    #  do_sample=self.args["do_sample"], 
-                                    #  temperature=self.args["temperature"],
+                                     do_sample=self.args["do_sample"], 
+                                     temperature=self.args["temperature"],
                                      pad_token_id=self.tokenizer.eos_token_id
                                      )
         
@@ -56,8 +56,8 @@ class Policy(nn.Module):
     def get_log_prob(self, traj_token):
         """
         Returns:
-            action_log_probs: [batch_size, seq_len-1]  (행동 토큰 위치만 값, 나머지는 0)
-            action_masks:     [batch_size, seq_len-1]  (행동 토큰 위치 1.0, 나머지 0.0)
+            action_log_probs: [batch_size, seq_len-1] 
+            action_masks:     [batch_size, seq_len-1] 
         """
         outputs = self.base(
             input_ids=traj_token['input_ids'],
@@ -65,41 +65,37 @@ class Policy(nn.Module):
             use_cache=False,       
         )
 
-        # [B, S-1, V]
         logits = outputs.logits[:, :-1, :]
-        # [B, S-1]
         labels = traj_token['labels'][:, 1:]
 
-        # 행동 토큰 마스크
         action_masks = (labels != -100)
 
         
         V = logits.size(-1)
         
         seq_len = logits.size(1)
-        chunk = 256  # 상황에 따라 128/256/512로 조절
+        chunk = 256 
         nll_chunks = []
         for start in range(0, seq_len, chunk):
             l = logits[:, start:start+chunk, :].contiguous()
             y = labels[:, start:start+chunk].contiguous()
 
             ce = F.cross_entropy(
-                l.view(-1, V),         # [B*chunk, V]
-                y.view(-1),            # [B*chunk]
+                l.view(-1, V),         
+                y.view(-1),           
                 reduction='none',
-                ignore_index=-100,     # 행동이 아닌 토큰 무시
+                ignore_index=-100, 
             )
             nll_chunks.append(ce.view_as(y))
 
-            # 중간 메모리 바로 해제
+ 
             del l, y, ce
             torch.cuda.empty_cache()
 
-        nll = torch.cat(nll_chunks, dim=1)       # [B, S-1]
-        action_log_probs = -nll                  # NLL -> log_prob
+        nll = torch.cat(nll_chunks, dim=1)    
+        action_log_probs = -nll          
         action_log_probs = action_log_probs * action_masks.float()
 
-        # 참조 제거로 그래프/메모리 정리
         del outputs, logits, nll, nll_chunks
         torch.cuda.empty_cache()
 
@@ -113,11 +109,11 @@ class Policy(nn.Module):
             state_end_mask: (batch, seq_len) (state end token set to 1, other is 0)
             action_end_mask: (batch, seq_len) (action end token set to 1, other is 0)
         """
-        # outputs = self.base(**traj_token, output_hidden_states=True)
+       
         outputs = self.base(input_ids=traj_token['input_ids'], 
                            attention_mask=traj_token['attention_mask'],
                            output_hidden_states=True)
-        hidden_states = outputs.hidden_states[-1] #(batch, seq_len, hidden_dim)
+        hidden_states = outputs.hidden_states[-1] 
         
         return hidden_states, traj_token["state_end_mask"], traj_token["action_end_mask"]
 
@@ -127,7 +123,6 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         self.args = args
 
-        # LLM backbone
         self.tokenizer = AutoTokenizer.from_pretrained(args["model_name"], use_auth_token=True)
         self.base = AutoModelForCausalLM.from_pretrained(args["model_name"], use_auth_token=True)
 
@@ -143,20 +138,17 @@ class Critic(nn.Module):
 
         hidden_dim = self.base.config.hidden_size
 
-        # Value head
         self.value_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, 1)
         )
 
-        # Q-value head
         self.q_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, 1)
         )
-        # Target critic 생성
         self.target_critic = copy.deepcopy(nn.ModuleDict({
             "base": self.base,
             "value_head": self.value_head,
@@ -181,14 +173,12 @@ class Critic(nn.Module):
             output_hidden_states=True
         )
 
-        hidden_states = outputs.hidden_states[-1]  # (batch, seq_len, hidden_dim)
-        values = self.value_head(hidden_states).squeeze(-1)   # (batch, seq_len)
-        q_values = self.q_head(hidden_states).squeeze(-1)     # (batch, seq_len)
+        hidden_states = outputs.hidden_states[-1] 
+        values = self.value_head(hidden_states).squeeze(-1) 
+        q_values = self.q_head(hidden_states).squeeze(-1)
 
         return values, q_values
-    # ---------------------------
-    # Critic 관련 함수들 (GLIDER에 둠)
-    # ---------------------------
+ 
     def soft_update_target_critic(self, tau: float):
         """Target Critic ← Critic soft update"""
         assert 0.0 <= tau <= 1.0
