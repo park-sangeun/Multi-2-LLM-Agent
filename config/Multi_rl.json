@@ -23,7 +23,8 @@
     "critic_lr":1e-6,
     "lr_high": 1e-5, 
     "tau":0.2,
-    "weight_tau":0.95,
+    "weight_tau":0.9,
+    "beta":3,
     "mode":"bc",
     "use_adv":true
 }
