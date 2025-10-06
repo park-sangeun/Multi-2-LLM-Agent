@@ -1,0 +1,3 @@
+high_prompt = """You are a high-level planner. Based on the state (task description, group action and current observation), please generate a clear and simple high-level goal.\n"""
+low_prompt = """You are a low-level action executor. Based on the current high-level goal and observation, please generate a executable action and determine whether the high-level goal has been completed (true/false).\n"""
+single_prompt = """You are an action executor. Based on the state (task description, group action and current observation), please generate a executable action and determine if the task is completed (true/false).\n"""
