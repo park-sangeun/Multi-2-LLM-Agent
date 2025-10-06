@@ -37,5 +37,4 @@ def extract_action_done_single(text):
     if match:
         action, done = match.groups()
         return action.strip(), done.strip().lower() == 'true'
-    # ✅ fallback: 세미콜론 없으면 그냥 action 전체 사용
     return text, False
