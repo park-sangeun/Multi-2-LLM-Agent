@@ -43,6 +43,10 @@ self.low_checkpoint_dir = (
     f"{args['alg_name']}/{args['model_name']}/low/{timestamp}"
 )
 ```
+* If you want to train the model on the ALFWorld benchmark, run the following command.
+```
+python Data_collect.py
+```
 - Run
 ```
 python train_Multi_SFT.py
