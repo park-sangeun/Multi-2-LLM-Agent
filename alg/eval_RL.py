@@ -29,14 +29,14 @@ class EvalAgent:
                                "lr": args["actor_lr"]}],
             config=args["ds_config"]
         )
-	self.high_checkpoint_dir = f"{args['check_path']}/{args['benchmark']}/{args['alg_name']}/{args['model_name']}/high"
+	    self.high_checkpoint_dir = f"{args['check_path']}/{args['benchmark']}/{args['alg_name']}/{args['model_name']}/high"
         self.low_checkpoint_dir = f"{args['check_path']}/{args['benchmark']}/{args['alg_name']}/{args['model_name']}/low"
 
         self.eval_env = ScienceWorldEnv("", envStepLimit=args['env_step_limit'])
         self.task_names = self.eval_env.getTaskNames()
         print("Load")
         Agent.load_low_policy(self, self.low_checkpoint_dir)
-	Agent.load_high_policy(self, self.high_checkpoint_dir)
+	    Agent.load_high_policy(self, self.high_checkpoint_dir)
 
 
     def evaluate_online(self, num_episodes=10, dev_or_test="dev"):
