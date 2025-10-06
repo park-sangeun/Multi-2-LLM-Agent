@@ -38,7 +38,7 @@ class Multi2:
                             "lr": args["critic_lr"]}],
             config=args["ds_config"]
         )
-
+        
         self.high_engine, *_ = deepspeed.initialize(
             model=self.high_policy,
             model_parameters=self.high_policy.base.parameters(),
@@ -50,7 +50,8 @@ class Multi2:
             model_parameters=self.low_policy.base.parameters(),
             config=args["ds_config"]
         )
-        
+        high_path = f"{args['check_path']}/{args['benchmark']}/glider_bc/{args['model_name']}/high/"
+        low_path = f"{args['check_path']}/{args['benchmark']}/glider_bc/{args['model_name']}/low/"
         BC_AGENT.load_high_policy(self, high_path)
         BC_AGENT.load_low_policy(self, low_path)
         
@@ -101,10 +102,6 @@ class Multi2:
         micro_batch_size = 4  
         total_size = len(batch_data['obs'])
         def expectile_loss(diff: torch.Tensor, expectile: float = 0.7):
-            """
-            diff: Q(s,a) - V(s) (stop grad on Q)
-            expectile: 0.5이면 MSE, 0.9에 가까울수록 overestimation 쪽으로 기울어짐
-            """
             weight = torch.where(diff > 0, expectile, 1 - expectile)
             return (weight * (diff ** 2)).mean()
         if level == "high":
