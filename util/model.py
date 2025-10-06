@@ -26,7 +26,7 @@ class Policy(nn.Module):
             )
 
     def generate_action(self, state_ids):
-        state_ids = state_ids.to(self.base.device)  # (batch, sqe_len)
+        state_ids = state_ids.to(self.base.device) 
         context_len = state_ids['input_ids'].size(1)
         outputs = self.base.generate(**state_ids, 
                                      max_new_tokens=self.args["max_new_tokens"],
